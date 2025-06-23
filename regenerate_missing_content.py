@@ -205,7 +205,7 @@ Do NOT include any image URLs or video links as I will handle those separately.
         
         return parsed_content
     
-    def regenerate_missing_content(self, csv_file: str, output_csv: str = None, delay: float = 2.0) -> None:
+    def regenerate_missing_content(self, csv_file: str, output_csv: str = None, delay: float = 2.0, start_from_id: str = None) -> None:
         """Main method to regenerate missing content"""
         if output_csv is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -217,6 +217,34 @@ Do NOT include any image URLs or video links as I will handle those separately.
         if not records_needing_regeneration:
             print("No missing content found. All records are complete!")
             return
+
+        # Filter records to start from specific ID if provided
+        if start_from_id:
+            print(f"\n🎯 FILTERING: Starting from ID {start_from_id}")
+            
+            # Find the index of the record with the specified ID
+            start_index = None
+            for i, record in enumerate(records_needing_regeneration):
+                if str(record['id']) == str(start_from_id):
+                    start_index = i
+                    print(f"✓ Found target record at position {i+1}: {record['brand']} {record['product_name']} (ID: {record['id']})")
+                    break
+            
+            if start_index is not None:
+                # Keep only records from the start_index onwards
+                original_count = len(records_needing_regeneration)
+                records_needing_regeneration = records_needing_regeneration[start_index:]
+                skipped_count = original_count - len(records_needing_regeneration)
+                print(f"📋 Filtered: Skipping first {skipped_count} records, processing {len(records_needing_regeneration)} records")
+                print(f"🎯 Starting with: {records_needing_regeneration[0]['brand']} {records_needing_regeneration[0]['product_name']} (ID: {records_needing_regeneration[0]['id']})")
+            else:
+                print(f"❌ ERROR: Record with ID {start_from_id} not found in records needing regeneration!")
+                print("Available IDs in records needing regeneration:")
+                for i, record in enumerate(records_needing_regeneration[:10]):  # Show first 10
+                    print(f"  {i+1}. ID: {record['id']} - {record['brand']} {record['product_name']}")
+                if len(records_needing_regeneration) > 10:
+                    print(f"  ... and {len(records_needing_regeneration) - 10} more records")
+                return
         
         print(f"\nStarting regeneration of {len(records_needing_regeneration)} records...")
         print(f"Output file: {output_csv}")
@@ -424,8 +452,8 @@ def main():
     print()
     
     try:
-        # Process the CSV file
-        regenerator.regenerate_missing_content(csv_file, output_csv=output_file, delay=delay)
+        # Process the CSV file - Starting from ID 32900 (Armaf Ventana)
+        regenerator.regenerate_missing_content(csv_file, output_csv=output_file, delay=delay, start_from_id="32900")
         
         print()
         print("=" * 60)

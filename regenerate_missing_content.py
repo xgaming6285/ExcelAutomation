@@ -60,11 +60,15 @@ class MissingContentRegenerator:
         
         # Find records that need regeneration
         records_needing_regeneration = []
+        records_complete = 0
+        
         for index, row in df.iterrows():
             missing_fields = []
             for col in self.content_columns:
                 if col in df.columns:
-                    if pd.isna(row[col]) or row[col] == '':
+                    # Check if field is missing (NaN, empty string, or just whitespace)
+                    cell_value = row[col]
+                    if pd.isna(cell_value) or str(cell_value).strip() == '':
                         missing_fields.append(col)
             
             if missing_fields:
@@ -75,10 +79,50 @@ class MissingContentRegenerator:
                     'brand': row.get('Brand', 'Unknown Brand'),
                     'missing_fields': missing_fields
                 })
+                if len(records_needing_regeneration) <= 10:  # Only show first 10 to avoid spam
+                    print(f"Record {index + 1} ({row.get('Brand', 'Unknown')} {row.get('Line', 'Unknown')}): Missing {len(missing_fields)} fields - {', '.join(missing_fields[:3])}{'...' if len(missing_fields) > 3 else ''}")
+                elif len(records_needing_regeneration) == 11:
+                    print("... (showing only first 10 records with missing data)")
+            else:
+                records_complete += 1
+                if records_complete <= 5:  # Only show first 5 complete records to avoid spam
+                    print(f"Record {index + 1} ({row.get('Brand', 'Unknown')} {row.get('Line', 'Unknown')}): ✓ Complete - SKIPPING")
+                elif records_complete == 6:
+                    print("... (additional complete records will be skipped silently)")
         
-        print(f"\nRecords needing regeneration: {len(records_needing_regeneration)}")
+        print(f"\n" + "="*60)
+        print(f"ANALYSIS SUMMARY:")
+        print(f"Total records: {len(df)}")
+        print(f"Records with complete data (will be SKIPPED): {records_complete}")
+        print(f"Records needing regeneration: {len(records_needing_regeneration)}")
+        
+        if records_needing_regeneration:
+            print(f"\nMost frequently missing fields:")
+            missing_summary = self.get_missing_fields_summary(records_needing_regeneration)
+            for field, count in sorted(missing_summary.items(), key=lambda x: x[1], reverse=True):
+                percentage = (count / len(records_needing_regeneration)) * 100
+                print(f"  {field}: {count} records ({percentage:.1f}%)")
+        
+        print(f"="*60)
         
         return df, records_needing_regeneration
+    
+    def has_complete_data(self, row: pd.Series) -> bool:
+        """Check if a record has all required content fields filled"""
+        for col in self.content_columns:
+            if col in row.index:
+                cell_value = row[col]
+                if pd.isna(cell_value) or str(cell_value).strip() == '':
+                    return False
+        return True
+    
+    def get_missing_fields_summary(self, records_needing_regeneration: List[Dict]) -> Dict[str, int]:
+        """Get a summary of which fields are missing most frequently"""
+        field_missing_count = {}
+        for record in records_needing_regeneration:
+            for field in record['missing_fields']:
+                field_missing_count[field] = field_missing_count.get(field, 0) + 1
+        return field_missing_count
     
     def create_content_prompt(self, product_name: str, brand: str, missing_fields: List[str]) -> str:
         """Create a prompt to generate only the missing content fields"""
@@ -183,9 +227,18 @@ Do NOT include any image URLs or video links as I will handle those separately.
         df.to_csv(backup_file, index=False)
         print(f"Backup created: {backup_file}")
         
+        # Create initial output file
+        df.to_csv(output_csv, index=False)
+        print(f"Initial output file created: {output_csv}")
+        
         # Process each record
         updated_count = 0
         total_fields_updated = 0
+        skipped_count = 0
+        
+        print(f"\nStarting to process {len(records_needing_regeneration)} records with missing data...")
+        print(f"Note: Records with complete data have already been identified and will be skipped.")
+        print(f"Auto-save: Progress will be saved after each record to prevent data loss.\n")
         
         for i, record in enumerate(records_needing_regeneration, 1):
             index = record['index']
@@ -193,8 +246,15 @@ Do NOT include any image URLs or video links as I will handle those separately.
             brand = record['brand']
             missing_fields = record['missing_fields']
             
+            # Double-check if record still needs processing (in case data was updated)
+            current_row = df.iloc[index]
+            if self.has_complete_data(current_row):
+                print(f"Skipping {i}/{len(records_needing_regeneration)}: {brand} {product_name} - Now has complete data")
+                skipped_count += 1
+                continue
+            
             print(f"\nProcessing {i}/{len(records_needing_regeneration)}: {brand} {product_name}")
-            print(f"Missing fields: {', '.join(missing_fields)}")
+            print(f"Missing fields ({len(missing_fields)}): {', '.join(missing_fields)}")
             
             try:
                 # Generate content for text fields
@@ -244,17 +304,29 @@ Do NOT include any image URLs or video links as I will handle those separately.
                 
             except Exception as e:
                 print(f"✗ Error processing record: {str(e)}")
+                
+            # Always save progress after each record (successful or failed)
+            df.to_csv(output_csv, index=False)
+            
+            # Show progress update every 10 records
+            if i % 10 == 0:
+                print(f"\n📊 Progress Update: {i}/{len(records_needing_regeneration)} records processed")
+                print(f"   Records updated: {updated_count}, Total fields updated: {total_fields_updated}")
+                print(f"   Current file: {output_csv}\n")
         
-        # Save the updated CSV
+        # Final save of the updated CSV
         df.to_csv(output_csv, index=False)
         
         print("\n" + "=" * 60)
         print(f"Regeneration complete!")
-        print(f"Records processed: {len(records_needing_regeneration)}")
-        print(f"Records updated: {updated_count}")
+        print(f"Records identified for processing: {len(records_needing_regeneration)}")
+        print(f"Records skipped (already complete): {skipped_count}")
+        print(f"Records actually updated: {updated_count}")
         print(f"Total fields updated: {total_fields_updated}")
-        print(f"Updated CSV saved: {output_csv}")
+        print(f"Final CSV saved: {output_csv}")
         print(f"Backup created: {backup_file}")
+        print(f"Note: Progress was automatically saved after each record.")
+        print(f"=" * 60)
 
 def main():
     """Main function to run the missing content regeneration"""

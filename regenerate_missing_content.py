@@ -173,8 +173,27 @@ Do NOT include any image URLs or video links as I will handle those separately.
         if not records_needing_regeneration:
             print("No missing content found. All records are complete!")
             return
+
+        # Define the specific records to process based on user request
+        # from 108(ID 36618) to 118(ID 37130) -> indices 107 to 117
+        # from 120(ID 28784) to 245(ID 35512) -> indices 119 to 244
+        # 745(ID 35512) -> index 744
+        # 746(ID 37593) -> index 745
+        indices_to_process = set()
+        indices_to_process.update(range(107, 118)) # Rows 108 to 118
+        indices_to_process.update(range(119, 245)) # Rows 120 to 245
+        indices_to_process.add(744) # Row 745
+        indices_to_process.add(745) # Row 746
+
+        records_to_process = [
+            r for r in records_needing_regeneration if r['index'] in indices_to_process
+        ]
         
-        print(f"\nStarting regeneration of {len(records_needing_regeneration)} records...")
+        if not records_to_process:
+            print("No records found for regeneration in the specified ranges.")
+            return
+
+        print(f"\nStarting regeneration of {len(records_to_process)} specific records...")
         print(f"Output file: {output_csv}")
         print("=" * 60)
         
@@ -187,13 +206,13 @@ Do NOT include any image URLs or video links as I will handle those separately.
         updated_count = 0
         total_fields_updated = 0
         
-        for i, record in enumerate(records_needing_regeneration, 1):
+        for i, record in enumerate(records_to_process, 1):
             index = record['index']
             product_name = record['product_name']
             brand = record['brand']
             missing_fields = record['missing_fields']
             
-            print(f"\nProcessing {i}/{len(records_needing_regeneration)}: {brand} {product_name}")
+            print(f"\nProcessing {i}/{len(records_to_process)}: {brand} {product_name} (Row: {index + 1})")
             print(f"Missing fields: {', '.join(missing_fields)}")
             
             try:
@@ -234,26 +253,27 @@ Do NOT include any image URLs or video links as I will handle those separately.
                     updated_count += 1
                     total_fields_updated += fields_updated
                     print(f"✓ Updated {fields_updated} fields")
+                    
+                    # Save progress after each successful update
+                    df.to_csv(output_csv, index=False)
+                    print(f"✓ Progress saved to {output_csv}")
                 else:
                     print("✗ No content generated")
                 
                 # Add delay between requests
-                if i < len(records_needing_regeneration):
+                if i < len(records_to_process):
                     print(f"Waiting {delay} seconds...")
                     time.sleep(delay)
                 
             except Exception as e:
                 print(f"✗ Error processing record: {str(e)}")
         
-        # Save the updated CSV
-        df.to_csv(output_csv, index=False)
-        
         print("\n" + "=" * 60)
         print(f"Regeneration complete!")
-        print(f"Records processed: {len(records_needing_regeneration)}")
+        print(f"Records processed: {len(records_to_process)}")
         print(f"Records updated: {updated_count}")
         print(f"Total fields updated: {total_fields_updated}")
-        print(f"Updated CSV saved: {output_csv}")
+        print(f"Final output saved to: {output_csv}")
         print(f"Backup created: {backup_file}")
 
 def main():
@@ -327,29 +347,8 @@ def main():
     print(f"Output file: {'Auto-generated' if output_file is None else output_file}")
     print()
     
-    # Create regenerator instance to analyze first
+    # Create regenerator instance
     regenerator = MissingContentRegenerator(GEMINI_API_KEY, GOOGLE_API_KEY, SEARCH_ENGINE_ID)
-    
-    # Analyze the data first
-    print("Analyzing missing data...")
-    df, records_needing_regeneration = regenerator.analyze_missing_data(csv_file)
-    
-    if not records_needing_regeneration:
-        print("No missing content found. All records are complete!")
-        return
-    
-    print(f"\nFound {len(records_needing_regeneration)} records that need regeneration.")
-    
-    # Confirm before starting
-    confirm = input("Do you want to proceed with regeneration? (y/N): ").strip().lower()
-    if confirm not in ['y', 'yes']:
-        print("Operation cancelled.")
-        return
-    
-    print()
-    print("Starting regeneration process...")
-    print("Press Ctrl+C to interrupt if needed.")
-    print()
     
     try:
         # Process the CSV file

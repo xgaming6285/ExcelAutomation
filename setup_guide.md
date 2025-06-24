@@ -53,9 +53,9 @@ You need to set up 3 API keys:
 
 ### On Windows (PowerShell):
 ```powershell
-$env:GEMINI_API_KEY="AIzaSyDDhcIH8K7xyZFVR8abeWxF1IwD40wmBPY"
-$env:GOOGLE_API_KEY="AIzaSyCNfPfRYtHF_TxvCovxLkXWqcA7izs9WF8"
-$env:GOOGLE_SEARCH_ENGINE_ID="81922ea1519404113"
+$env:GEMINI_API_KEY="AIzaSyDFfkyAsZQKyP4_DSVDCKApTVCAErOBzig"
+$env:GOOGLE_API_KEY="AIzaSyCfuUshURPtafBw8l8i1WOrvcMwoWgfFyk"
+$env:GOOGLE_SEARCH_ENGINE_ID="55402958d90a342ec"
 ```
 
 ### On Windows (Command Prompt):

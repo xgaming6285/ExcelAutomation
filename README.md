@@ -24,7 +24,24 @@ This Python script processes a CSV file containing beauty product information an
 ## Setup
 
 ⚠️ **Important**: This new version requires additional API keys for Google Search functionality.
-
+41297
+29369
+35835
+40753
+36986
+39695
+42052
+9009
+37868
+38067
+40389
+40390
+38447
+29343
+35900
+31125
+7341
+35512
 See the detailed [Setup Guide](setup_guide.md) for complete instructions.
 
 ### Quick Setup Summary

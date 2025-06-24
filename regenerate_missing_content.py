@@ -219,15 +219,14 @@ Do NOT include any image URLs or video links as I will handle those separately.
             return
 
         # Define the specific records to process based on user request
-        # from 108(ID 36618) to 118(ID 37130) -> indices 107 to 117
-        # from 120(ID 28784) to 245(ID 35512) -> indices 119 to 244
-        # 745(ID 35512) -> index 744
-        # 746(ID 37593) -> index 745
+        # - Rows 196 (ID 14127) and 197 (ID 39745) -> indices 195, 196
+        # - Rows 221 to 226 -> indices 220 to 225
+        # - Rows 228 to 245 -> indices 227 to 244
         indices_to_process = set()
-        indices_to_process.update(range(107, 118)) # Rows 108 to 118
-        indices_to_process.update(range(119, 245)) # Rows 120 to 245
-        indices_to_process.add(744) # Row 745
-        indices_to_process.add(745) # Row 746
+        indices_to_process.add(195)  # Row 196
+        indices_to_process.add(196)  # Row 197
+        indices_to_process.update(range(220, 226))  # Rows 221 to 226
+        indices_to_process.update(range(227, 245))  # Rows 228 to 245
 
         records_to_process = [
             r for r in records_needing_regeneration if r['index'] in indices_to_process
@@ -372,7 +371,7 @@ def main():
     print()
     
     # CSV file to process
-    csv_file = '18062025 - Парфюми  - Sheet1 (1).csv'
+    csv_file = 'updated_products_20250624_131259.csv'
     
     if not os.path.exists(csv_file):
         print(f"ERROR: CSV file '{csv_file}' not found!")
